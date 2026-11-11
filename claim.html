@@ -154,6 +154,20 @@ var NFT_ABI=["function ownerOf(uint256) view returns (address)"];
 var CLAIM_ABI=["function claim(uint256[]) payable","function claimed(uint256) view returns (bool)","function feePerNft() view returns (uint256)","function ALLOCATION() view returns (uint256)"];
 var TOKEN_ABI=["function balanceOf(address) view returns (uint256)"];
 function msg(t){ document.getElementById("claimMsg").textContent=t; }
+const txWalletFee={en:"Your wallet could not prepare this transaction (empty answer from the browser). Open this site inside your wallet app browser (MetaMask / Trust Wallet / Binance Wallet) and try again.",ja:"ウォレットが取引を準備できませんでした（ブラウザからの応答が空でした）。MetaMask / Trust Wallet / Binance Wallet のアプリ内ブラウザでこのサイトを開いて、もう一度お試しください。",zh:"您的钱包无法准备这笔交易（浏览器返回了空响应）。请在钱包应用内浏览器（MetaMask / Trust Wallet / Binance Wallet）中打开本站，然后重试。",ko:"지갑에서 이 거래를 준비할 수 없습니다(브라우저 응답이 비어 있습니다). MetaMask / Trust Wallet / Binance Wallet 앱 내 브라우저에서 이 사이트를 열고 다시 시도해 주세요。"};
+function txLang(){ if(typeof LANG!=="undefined"&&LANG&&txWalletFee[LANG]) return LANG; var l=(navigator.language||"en").slice(0,2).toLowerCase(); return txWalletFee[l]?l:"en"; }
+async function rpcGasPrice(){
+  for(const url of RPCS){
+    try{ const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:1,method:"eth_gasPrice",params:[]})});
+      const j=await r.json(); if(j.result) return BigInt(j.result); }catch(e){}
+  } return 1000000000n;
+}
+function txErrMsg(e){
+  const m=(e&&e.message)||String(e||"");
+  if(m.indexOf("invalid BigNumberish")>=0||m.indexOf("value=null")>=0){ return txWalletFee[txLang()]; }
+  return (e&&e.reason)||m;
+}
+
 async function getReadProvider(){ if(readProvider) return readProvider; readProvider=new ethers.JsonRpcProvider(RPCS[0]); return readProvider; }
 async function switchRpc(){ var i=RPCS.indexOf(readProvider?._getConnection?readProvider._getConnection().url:RPCS[0]); var next=RPCS[(i+1)%RPCS.length]; readProvider=new ethers.JsonRpcProvider(next); return readProvider; }
 async function connectWallet(){
@@ -244,7 +258,7 @@ async function doClaim(){
     var cl=new ethers.Contract(CLAIM,CLAIM_ABI,signer);
     var fee=feePerNft?feePerNft*BigInt(ids.length):ethers.parseEther((0.0004*ids.length).toFixed(5));
     msg("Sending claim transaction for "+ids.length+" Shark(s)...");
-    var tx=await cl.claim(ids,{value:fee});
+    var gp=await rpcGasPrice(); var tx=await cl.claim(ids,{value:fee,gasPrice:gp,gasLimit:BigInt(100000+80000*ids.length)});
     msg("Transaction sent: "+tx.hash+" — waiting for confirmation...");
     await tx.wait();
     msg("Claimed! "+(ids.length*10000).toLocaleString("en-US")+" SHARK should now be in your wallet. Tx: "+tx.hash);
@@ -252,7 +266,7 @@ async function doClaim(){
     var rp=await getReadProvider(); var tok=new ethers.Contract(TOKEN,TOKEN_ABI,rp);
     var bal=await tok.balanceOf(userAddr);
     document.getElementById("balLine").textContent="SHARK balance: "+ethers.formatEther(bal)+" SHARK";
-  }catch(e){ msg("Claim failed: "+(e&&e.reason?e.reason:(e&&e.message?e.message:e))); btn.disabled=false; }
+  }catch(e){ msg("Claim failed: "+txErrMsg(e)); btn.disabled=false; }
 }
 document.querySelectorAll(".reveal").forEach(function(el){ new IntersectionObserver(function(es,o){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add("on");o.disconnect();}})}).observe(el); });
 window.addEventListener("scroll",function(){ var nav=document.querySelector("nav"); if(nav) nav.classList.toggle("scrolled",window.scrollY>10); },{passive:true});
