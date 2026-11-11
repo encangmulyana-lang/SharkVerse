@@ -1,0 +1,15 @@
+{
+  "name": "SHARKVERSE #3918",
+  "description": "SHARKVERSE is a school of 4,444 pixel-art sharks patrolling the BNB Chain. From the humble Reef Shark to the glowing Mythic Leviathan, each NFT is a retro 16-bit predator of the deep. Pixel-art edition: 4,444 sharks. Your first mint is free.",
+  "image": "https://sharkverse-zeta.vercel.app/metadata/common.png",
+  "attributes": [
+    {
+      "trait_type": "Rarity",
+      "value": "Common"
+    },
+    {
+      "trait_type": "Character",
+      "value": "Reef Shark"
+    }
+  ]
+}
